@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BreakerType {
+  STANDARD
+  GFCI
+  AFCI
+  DUAL_FUNCTION
+}
+
+enum OutletKind {
+  OUTLET
+  SWITCH
+  LIGHT
+  APPLIANCE
+  PANEL_FEED
+}
+
+model Floor {
+  id          String   @id @default(cuid())
+  name        String
+  level       Int?
+  description String?
+  rooms       Room[]
+  outlets     Outlet[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Room {
+  id        String   @id @default(cuid())
+  name      String
+  floorId   String
+  floor     Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  outlets   Outlet[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OutletType {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  icon      String?
+  kind      OutletKind
+  outlets   Outlet[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Panel {
+  id              String    @id @default(cuid())
+  name            String
+  location        String?
+  rows            Int?
+  columns         Int?
+  parentPanelId   String?
+  parentPanel     Panel?    @relation("PanelHierarchy", fields: [parentPanelId], references: [id])
+  subpanels       Panel[]   @relation("PanelHierarchy")
+  supplyBreakerId String?   @unique
+  supplyBreaker   Breaker?  @relation("PanelSupply", fields: [supplyBreakerId], references: [id])
+  circuits        Circuit[]
+  breakers        Breaker[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Circuit {
+  id        String    @id @default(cuid())
+  name      String?
+  label     String?
+  amperage  Int?
+  voltage   Int?
+  color     String?
+  notes     String?
+  panelId   String?
+  panel     Panel?    @relation(fields: [panelId], references: [id], onDelete: SetNull)
+  breakers  Breaker[]
+  outlets   Outlet[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Breaker {
+  id         String      @id @default(cuid())
+  panelId    String
+  panel      Panel       @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  slotNumber Int?
+  label      String?
+  poleCount  Int?
+  type       BreakerType @default(STANDARD)
+  amperage   Int?
+  voltage    Int?
+  circuitId  String?
+  circuit    Circuit?    @relation(fields: [circuitId], references: [id], onDelete: SetNull)
+  feedsPanel Panel?      @relation("PanelSupply")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([panelId, slotNumber], map: "panel_slot_unique")
+}
+
+model Outlet {
+  id                String     @id @default(cuid())
+  name              String?
+  description       String?
+  floorId           String
+  floor             Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  roomId            String?
+  room              Room?      @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  typeId            String?
+  type              OutletType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  kind              OutletKind @default(OUTLET)
+  x                 Float
+  y                 Float
+  rotation          Float?
+  circuitId         String?
+  circuit           Circuit?   @relation(fields: [circuitId], references: [id], onDelete: SetNull)
+  isGfci            Boolean    @default(false)
+  gfciProtectedById String?
+  gfciProtectedBy   Outlet?    @relation("GfciLink", fields: [gfciProtectedById], references: [id])
+  protects          Outlet[]   @relation("GfciLink")
+  notes             String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
