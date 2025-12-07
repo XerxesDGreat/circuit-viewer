@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Stage, Layer, Rect, Group, Circle, Text } from "react-konva";
+import { Stage, Layer, Rect, Group, Circle, Text, Image as KonvaImage } from "react-konva";
+import useImage from "use-image";
 import type { KonvaEventObject } from "konva/lib/Node";
 import type { Circuit, FloorPlan, Outlet } from "../types";
 
@@ -29,6 +30,8 @@ export function FloorCanvas({
 }: Props) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [stageDraggable, setStageDraggable] = useState(false);
+  const [bgImage] = useImage(floor.backgroundImageUrl || "", "anonymous");
 
   const circuitColors = useMemo(
     () =>
@@ -61,6 +64,24 @@ export function FloorCanvas({
     setOffset(newPos);
   };
 
+  const handleStagePointerDown = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const stage = e.target.getStage();
+    if (!stage) return;
+    const isStage = e.target === stage;
+    if (isStage) {
+      setStageDraggable(true);
+      stage.draggable(true);
+      stage.startDrag();
+    } else {
+      setStageDraggable(false);
+      stage.draggable(false);
+    }
+  };
+
+  const handleStagePointerUp = () => {
+    setStageDraggable(false);
+  };
+
   return (
     <div className="canvas-container">
       <Stage
@@ -70,19 +91,39 @@ export function FloorCanvas({
         scaleY={scale}
         x={offset.x}
         y={offset.y}
-        draggable
-        onDragEnd={(e) => setOffset({ x: e.target.x(), y: e.target.y() })}
+        draggable={stageDraggable}
+        onDragEnd={(e) => {
+          const stage = e.target.getStage();
+          if (stage && e.target === stage) {
+            setOffset({ x: stage.x(), y: stage.y() });
+          }
+        }}
         onWheel={handleWheel}
+        onMouseDown={handleStagePointerDown}
+        onTouchStart={handleStagePointerDown}
+        onMouseUp={handleStagePointerUp}
+        onTouchEnd={handleStagePointerUp}
         style={{ border: "1px solid #e2e8f0", background: "#fff" }}
       >
         <Layer>
-          <Rect
-            x={0}
-            y={0}
-            width={floor.width}
-            height={floor.height}
-            fill={floor.backgroundColor || "#f8fafc"}
-          />
+          {bgImage ? (
+            <KonvaImage
+              image={bgImage}
+              x={0}
+              y={0}
+              width={floor.width}
+              height={floor.height}
+              listening={false}
+            />
+          ) : (
+            <Rect
+              x={0}
+              y={0}
+              width={floor.width}
+              height={floor.height}
+              fill={floor.backgroundColor || "#f8fafc"}
+            />
+          )}
           {outlets.map((outlet) => {
             const isHighlighted = highlightedOutletIds.has(outlet.id);
             const fill = circuitColors[outlet.circuitId || ""] || kindColor[outlet.kind] || "#0ea5e9";

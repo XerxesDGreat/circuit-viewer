@@ -24,6 +24,32 @@ export function Sidebar({
     outlets: outlets.filter((o) => o.circuitId === c.id)
   }));
 
+  const outletById = outlets.reduce<Record<string, Outlet>>((acc, o) => {
+    acc[o.id] = o;
+    return acc;
+  }, {});
+
+  const describe = (o: Outlet) => {
+    const lines: string[] = [];
+    if (o.isGfci && o.gfciProtectsIds?.length) {
+      const names = o.gfciProtectsIds.map((id) => outletById[id]?.name || id).join(", ");
+      lines.push(`protects: ${names}`);
+    }
+    const protector = Object.values(outletById).find((x) => x.gfciProtectsIds?.includes(o.id));
+    if (protector) {
+      lines.push(`behind GFCI: ${protector.name || protector.id}`);
+    }
+    if (o.controlledBySwitchId) {
+      const sw = outletById[o.controlledBySwitchId];
+      if (sw) lines.push(`uses switch: ${sw.name || sw.id}`);
+    }
+    if (o.controlsOutletIds?.length) {
+      const names = o.controlsOutletIds.map((id) => outletById[id]?.name || id).join(", ");
+      lines.push(`controls: ${names}`);
+    }
+    return lines;
+  };
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -68,6 +94,13 @@ export function Sidebar({
             >
               <div className="label">{o.name || o.id}</div>
               <div className="muted">{o.kind}</div>
+              {describe(o).length > 0 && (
+                <div className="muted outlet-meta">
+                  {describe(o).map((line) => (
+                    <div key={line}>{line}</div>
+                  ))}
+                </div>
+              )}
             </button>
           ))}
         </div>

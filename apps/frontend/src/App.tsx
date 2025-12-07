@@ -34,13 +34,11 @@ function App() {
     const set = new Set<string>();
     if (selectedCircuitId) {
       outlets.filter((o) => o.circuitId === selectedCircuitId).forEach((o) => set.add(o.id));
+      return set;
     }
     if (selectedOutletId) {
       set.add(selectedOutletId);
       const selectedOutlet = outlets.find((o) => o.id === selectedOutletId);
-      if (selectedOutlet?.circuitId) {
-        outlets.filter((o) => o.circuitId === selectedOutlet.circuitId).forEach((o) => set.add(o.id));
-      }
       if (selectedOutlet?.isGfci && selectedOutlet.gfciProtectsIds) {
         selectedOutlet.gfciProtectsIds.forEach((id) => set.add(id));
       }
@@ -48,16 +46,19 @@ function App() {
       if (protector) {
         set.add(protector);
       }
+      if (selectedOutlet?.controlsOutletIds) {
+        selectedOutlet.controlsOutletIds.forEach((id) => set.add(id));
+      }
+      if (selectedOutlet?.controlledBySwitchId) {
+        set.add(selectedOutlet.controlledBySwitchId);
+      }
     }
     return set;
   }, [selectedCircuitId, selectedOutletId, outlets, gfciProtectedBy]);
 
   const handleSelectOutlet = (id: string) => {
+    selectCircuit(null);
     selectOutlet(id);
-    const outlet = outlets.find((o) => o.id === id);
-    if (outlet?.circuitId) {
-      selectCircuit(outlet.circuitId);
-    }
   };
 
   const handleSelectCircuit = (id: string | null) => {

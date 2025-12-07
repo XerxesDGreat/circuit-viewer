@@ -11,6 +11,8 @@ export type Outlet = {
   room?: string;
   isGfci?: boolean;
   gfciProtectsIds?: string[];
+  controlledBySwitchId?: string;
+  controlsOutletIds?: string[];
 };
 
 export type Circuit = {
