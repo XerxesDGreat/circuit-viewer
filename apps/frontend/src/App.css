@@ -143,3 +143,107 @@
   font-size: 14px;
   color: #cbd5e1;
 }
+
+.legend {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #e5e7eb;
+}
+
+.legend-shape {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background: #0ea5e9;
+  border: 1px solid #1f2937;
+}
+
+.legend-shape.square {
+  border-radius: 3px;
+}
+
+.legend-shape.triangle {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 16px solid #f59e0b;
+  background: transparent;
+  border-radius: 0;
+}
+
+.legend-shape.triangle.dimmer {
+  border-bottom-color: #f59e0b;
+  position: relative;
+}
+
+.legend-shape.triangle.dimmer::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 6px;
+  width: 8px;
+  height: 8px;
+  background: #0b1021;
+  border: 1px solid #1f2937;
+  border-radius: 50%;
+}
+
+.legend-shape.circle {
+  border-radius: 50%;
+  background: #fbbf24;
+}
+
+.legend-shape.circle.fan {
+  border-radius: 50%;
+  background: #14b8a6;
+  position: relative;
+}
+
+.legend-shape.circle.fan::before,
+.legend-shape.circle.fan::after {
+  content: "";
+  position: absolute;
+  background: #0b1021;
+}
+
+.legend-shape.circle.fan::before {
+  width: 2px;
+  height: 14px;
+  left: 7px;
+  top: 1px;
+}
+
+.legend-shape.circle.fan::after {
+  height: 2px;
+  width: 14px;
+  left: 1px;
+  top: 7px;
+}
+
+.legend-shape.rounded {
+  border-radius: 4px;
+  background: #22c55e;
+  width: 20px;
+  height: 14px;
+}
+
+.legend-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #0ea5e9;
+  color: #0b1021;
+  font-weight: 700;
+  font-size: 11px;
+}

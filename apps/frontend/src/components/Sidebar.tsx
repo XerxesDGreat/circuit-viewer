@@ -105,6 +105,39 @@ export function Sidebar({
           ))}
         </div>
       </div>
+
+      <div className="section">
+        <div className="section-header">
+          <h3>Legend</h3>
+          <p className="muted">Shapes by type</p>
+        </div>
+        <div className="legend">
+          <div className="legend-row">
+            <span className="legend-shape square" /> <span>Outlet</span>
+          </div>
+          <div className="legend-row">
+            <span className="legend-shape square" /> <span>Outlet 240V (with “240”)</span>
+          </div>
+          <div className="legend-row">
+            <span className="legend-shape triangle" /> <span>Switch</span>
+          </div>
+          <div className="legend-row">
+            <span className="legend-shape triangle dimmer" /> <span>Dimmer</span>
+          </div>
+          <div className="legend-row">
+            <span className="legend-shape circle" /> <span>Light</span>
+          </div>
+          <div className="legend-row">
+            <span className="legend-shape circle fan" /> <span>Fan</span>
+          </div>
+          <div className="legend-row">
+            <span className="legend-shape rounded" /> <span>Appliance / Cooktop / Dryer / AC (with tag)</span>
+          </div>
+          <div className="legend-row">
+            <span className="legend-tag">GFCI</span> <span>GFCI badge</span>
+          </div>
+        </div>
+      </div>
     </aside>
   );
 }

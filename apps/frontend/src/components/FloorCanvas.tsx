@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { Stage, Layer, Rect, Group, Circle, Text, Image as KonvaImage } from "react-konva";
+import { Stage, Layer, Rect, Group, Circle, Text, Line, Image as KonvaImage } from "react-konva";
 import useImage from "use-image";
 import type { KonvaEventObject } from "konva/lib/Node";
-import type { Circuit, FloorPlan, Outlet } from "../types";
+import type { Circuit, FloorPlan, Outlet, OutletKind } from "../types";
 
 type Props = {
   floor: FloorPlan;
@@ -15,9 +15,15 @@ type Props = {
 
 const kindColor: Record<string, string> = {
   OUTLET: "#0ea5e9",
+  OUTLET_240: "#7c3aed",
   SWITCH: "#f59e0b",
-  LIGHT: "#a855f7",
-  APPLIANCE: "#22c55e"
+  DIMMER: "#f59e0b",
+  LIGHT: "#fbbf24",
+  FAN: "#14b8a6",
+  APPLIANCE: "#22c55e",
+  COOKTOP: "#ef4444",
+  DRYER: "#8b5cf6",
+  AC: "#38bdf8"
 };
 
 export function FloorCanvas({
@@ -137,17 +143,36 @@ export function FloorCanvas({
                 onClick={() => onSelectOutlet(outlet.id)}
                 onTap={() => onSelectOutlet(outlet.id)}
               >
-                <Circle
-                  radius={12}
-                  fill={fill}
-                  opacity={isHighlighted ? 1 : 0.6}
-                  stroke={isHighlighted ? "#f97316" : "#0f172a"}
-                  strokeWidth={isHighlighted ? 3 : 1}
-                />
+                <Group>
+                  {renderShape(outlet.kind, fill, isHighlighted)}
+                  {outlet.kind === "OUTLET_240" && (
+                    <Text
+                      text="240"
+                      y={-22}
+                      fill={fill}
+                      fontSize={10}
+                      align="center"
+                      width={32}
+                      offsetX={16}
+                    />
+                  )}
+                  {outlet.isGfci && (
+                    <Text
+                      text="GFCI"
+                      y={18}
+                      fill={fill}
+                      fontSize={10}
+                      align="center"
+                      width={36}
+                      offsetX={18}
+                    />
+                  )}
+                </Group>
                 <Text
                   text={outlet.name || outlet.id}
-                  offsetY={-22}
-                  offsetX={0}
+                  x={0}
+                  y={-24}
+                  offsetX={70}
                   width={140}
                   align="center"
                   fill="#0f172a"
@@ -161,5 +186,47 @@ export function FloorCanvas({
       </Stage>
     </div>
   );
+}
+
+function renderShape(kind: OutletKind, fill: string, isHighlighted: boolean) {
+  const common = {
+    stroke: isHighlighted ? "#f97316" : "#0f172a",
+    strokeWidth: isHighlighted ? 3 : 1,
+    fill
+  };
+
+  switch (kind) {
+    case "OUTLET":
+    case "OUTLET_240":
+      return <Rect x={-12} y={-9} width={24} height={18} cornerRadius={3} {...common} />;
+    case "SWITCH":
+      return <Line points={[-12, 10, 12, 10, 0, -12]} closed {...common} />;
+    case "DIMMER":
+      return (
+        <Group>
+          <Line points={[-12, 10, 12, 10, 0, -12]} closed {...common} />
+          <Circle x={0} y={2} radius={4} fill="#0b1021" stroke={common.stroke} strokeWidth={1} />
+        </Group>
+      );
+    case "LIGHT":
+      return <Circle radius={12} {...common} />;
+    case "FAN":
+      return (
+        <Group>
+          <Circle radius={12} {...common} />
+          <Line points={[-8, 0, 8, 0]} stroke="#0b1021" strokeWidth={2} />
+          <Line points={[0, -8, 0, 8]} stroke="#0b1021" strokeWidth={2} />
+        </Group>
+      );
+    case "COOKTOP":
+    case "DRYER":
+    case "AC":
+    case "APPLIANCE":
+      return (
+        <Rect x={-12} y={-10} width={24} height={20} cornerRadius={4} {...common} />
+      );
+    default:
+      return <Circle radius={12} {...common} />;
+  }
 }
 

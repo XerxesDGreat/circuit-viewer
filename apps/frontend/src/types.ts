@@ -1,4 +1,14 @@
-export type OutletKind = "OUTLET" | "SWITCH" | "LIGHT" | "APPLIANCE";
+export type OutletKind =
+  | "OUTLET"
+  | "OUTLET_240"
+  | "SWITCH"
+  | "DIMMER"
+  | "LIGHT"
+  | "FAN"
+  | "APPLIANCE"
+  | "COOKTOP"
+  | "DRYER"
+  | "AC";
 
 export type Outlet = {
   id: string;
