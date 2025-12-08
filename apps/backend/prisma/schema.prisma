@@ -14,12 +14,26 @@ enum BreakerType {
   DUAL_FUNCTION
 }
 
-enum OutletKind {
+enum NodeKind {
   OUTLET
+  OUTLET_240
   SWITCH
+  DIMMER
   LIGHT
+  FAN
   APPLIANCE
+  COOKTOP
+  DRYER
+  AC
   PANEL_FEED
+  OTHER
+}
+
+enum NodeLinkKind {
+  GFCI_PROTECTS
+  SWITCH_CONTROLS
+  FEEDS
+  OTHER
 }
 
 model Floor {
@@ -28,7 +42,7 @@ model Floor {
   level       Int?
   description String?
   rooms       Room[]
-  outlets     Outlet[]
+  nodes       Node[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -38,18 +52,18 @@ model Room {
   name      String
   floorId   String
   floor     Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
-  outlets   Outlet[]
+  nodes     Node[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model OutletType {
+model NodeType {
   id        String   @id @default(cuid())
   key       String   @unique
   label     String
   icon      String?
-  kind      OutletKind
-  outlets   Outlet[]
+  kind      NodeKind
+  nodes     Node[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -82,7 +96,7 @@ model Circuit {
   panelId   String?
   panel     Panel?    @relation(fields: [panelId], references: [id], onDelete: SetNull)
   breakers  Breaker[]
-  outlets   Outlet[]
+  nodes     Node[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -100,34 +114,63 @@ model Breaker {
   circuitId  String?
   circuit    Circuit?    @relation(fields: [circuitId], references: [id], onDelete: SetNull)
   feedsPanel Panel?      @relation("PanelSupply")
+  linksA     BreakerLink[] @relation("BreakerLinkA")
+  linksB     BreakerLink[] @relation("BreakerLinkB")
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
   @@unique([panelId, slotNumber], map: "panel_slot_unique")
 }
 
-model Outlet {
-  id                String     @id @default(cuid())
-  name              String?
-  description       String?
-  floorId           String
-  floor             Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
-  roomId            String?
-  room              Room?      @relation(fields: [roomId], references: [id], onDelete: SetNull)
-  typeId            String?
-  type              OutletType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
-  kind              OutletKind @default(OUTLET)
-  x                 Float
-  y                 Float
-  rotation          Float?
-  circuitId         String?
-  circuit           Circuit?   @relation(fields: [circuitId], references: [id], onDelete: SetNull)
-  isGfci            Boolean    @default(false)
-  gfciProtectedById String?
-  gfciProtectedBy   Outlet?    @relation("GfciLink", fields: [gfciProtectedById], references: [id])
-  protects          Outlet[]   @relation("GfciLink")
-  notes             String?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+model BreakerLink {
+  id          String   @id @default(cuid())
+  breakerAId  String
+  breakerBId  String
+  kind        String?  // e.g., TIED, SHARED_HANDLE
+  breakerA    Breaker  @relation("BreakerLinkA", fields: [breakerAId], references: [id], onDelete: Cascade)
+  breakerB    Breaker  @relation("BreakerLinkB", fields: [breakerBId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([breakerAId, breakerBId], map: "breaker_link_pair_unique")
+}
+
+model Node {
+  id           String    @id @default(cuid())
+  name         String?
+  description  String?
+  floorId      String
+  floor        Floor     @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  roomId       String?
+  room         Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  typeId       String?
+  type         NodeType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  kind         NodeKind  @default(OUTLET)
+  x            Float
+  y            Float
+  rotation     Float?
+  circuitId    String?
+  circuit      Circuit?  @relation(fields: [circuitId], references: [id], onDelete: SetNull)
+  isGfci       Boolean   @default(false)
+  notes        String?
+  linksFrom    NodeLink[] @relation("NodeLinkFrom")
+  linksTo      NodeLink[] @relation("NodeLinkTo")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model NodeLink {
+  id        String       @id @default(cuid())
+  kind      NodeLinkKind
+  fromId    String
+  toId      String
+  from      Node         @relation("NodeLinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to        Node         @relation("NodeLinkTo", fields: [toId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([fromId])
+  @@index([toId])
+  @@index([kind])
 }
 
