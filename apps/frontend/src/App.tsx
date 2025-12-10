@@ -5,56 +5,67 @@ import { FloorCanvas } from "./components/FloorCanvas";
 import { Sidebar } from "./components/Sidebar";
 import { useSelection } from "./state/useSelection";
 import type { Outlet } from "./types";
+import { useCircuits, useNodes, useNodeLinks } from "./api/hooks";
 
 function App() {
   const [outlets, setOutlets] = useState<Outlet[]>(mockOutlets);
+  const circuitsQuery = useCircuits();
+  const nodesQuery = useNodes();
+  const nodeLinksQuery = useNodeLinks();
   const { selectedCircuitId, selectedOutletId, selectCircuit, selectOutlet, clear } = useSelection();
 
-  const gfciProtects = useMemo(() => {
-    const map = new Map<string, string[]>();
-    outlets.forEach((o) => {
-      if (o.isGfci && o.gfciProtectsIds) {
-        map.set(o.id, o.gfciProtectsIds);
-      }
-    });
-    return map;
-  }, [outlets]);
+  const useLive = circuitsQuery.isSuccess && nodesQuery.isSuccess;
+  const circuits = useLive ? (circuitsQuery.data as any) : mockCircuits;
+  const nodes = useLive ? (nodesQuery.data as any as Outlet[]) : outlets;
+  const nodeLinks = useLive ? nodeLinksQuery.data || [] : [];
 
-  const gfciProtectedBy = useMemo(() => {
-    const map = new Map<string, string>();
-    outlets.forEach((o) => {
-      if (o.isGfci && o.gfciProtectsIds) {
-        o.gfciProtectsIds.forEach((id) => map.set(id, o.id));
+  const linkMaps = useMemo(() => {
+    const protects = new Map<string, string[]>();
+    const controlledBy = new Map<string, string>();
+    const controls = new Map<string, string[]>();
+    nodeLinks.forEach((l) => {
+      if (l.kind === "GFCI_PROTECTS") {
+        if (!protects.has(l.fromId)) protects.set(l.fromId, []);
+        protects.get(l.fromId)!.push(l.toId);
+      }
+      if (l.kind === "SWITCH_CONTROLS") {
+        if (!controls.has(l.fromId)) controls.set(l.fromId, []);
+        controls.get(l.fromId)!.push(l.toId);
+        controlledBy.set(l.toId, l.fromId);
       }
     });
-    return map;
-  }, [outlets]);
+    return { protects, controlledBy, controls };
+  }, [nodeLinks]);
 
   const highlightedOutletIds = useMemo(() => {
     const set = new Set<string>();
     if (selectedCircuitId) {
-      outlets.filter((o) => o.circuitId === selectedCircuitId).forEach((o) => set.add(o.id));
+      nodes.filter((o) => o.circuitId === selectedCircuitId).forEach((o) => set.add(o.id));
       return set;
     }
     if (selectedOutletId) {
       set.add(selectedOutletId);
-      const selectedOutlet = outlets.find((o) => o.id === selectedOutletId);
-      if (selectedOutlet?.isGfci && selectedOutlet.gfciProtectsIds) {
-        selectedOutlet.gfciProtectsIds.forEach((id) => set.add(id));
+      const selectedOutlet = nodes.find((o) => o.id === selectedOutletId);
+      if (selectedOutlet?.isGfci) {
+        const protects = linkMaps.protects.get(selectedOutlet.id) || [];
+        protects.forEach((id) => set.add(id));
       }
-      const protector = gfciProtectedBy.get(selectedOutletId);
-      if (protector) {
-        set.add(protector);
+      let protector: string | undefined;
+      for (const [fromId, tos] of linkMaps.protects.entries()) {
+        if (tos.includes(selectedOutletId)) {
+          protector = fromId;
+          break;
+        }
       }
-      if (selectedOutlet?.controlsOutletIds) {
-        selectedOutlet.controlsOutletIds.forEach((id) => set.add(id));
-      }
-      if (selectedOutlet?.controlledBySwitchId) {
-        set.add(selectedOutlet.controlledBySwitchId);
-      }
+      if (protector) set.add(protector);
+
+      const controls = linkMaps.controls.get(selectedOutletId) || [];
+      controls.forEach((id) => set.add(id));
+      const controlledBy = linkMaps.controlledBy.get(selectedOutletId);
+      if (controlledBy) set.add(controlledBy);
     }
     return set;
-  }, [selectedCircuitId, selectedOutletId, outlets, gfciProtectedBy]);
+  }, [selectedCircuitId, selectedOutletId, nodes, linkMaps]);
 
   const handleSelectOutlet = (id: string) => {
     selectCircuit(null);
@@ -72,8 +83,8 @@ function App() {
   return (
     <div className="page">
       <Sidebar
-        circuits={mockCircuits}
-        outlets={outlets}
+        circuits={circuits}
+        outlets={nodes}
         selectedCircuitId={selectedCircuitId}
         selectedOutletId={selectedOutletId}
         onSelectCircuit={handleSelectCircuit}
@@ -87,14 +98,14 @@ function App() {
             <p className="muted">Drag outlets, zoom with wheel/trackpad, click to highlight.</p>
           </div>
           <div className="badges">
-            <span className="badge">Mock data</span>
+            <span className="badge">{useLive ? "Live data" : "Mock data"}</span>
             <span className="badge">Konva canvas</span>
           </div>
         </header>
         <FloorCanvas
           floor={mockFloor}
-          outlets={outlets}
-          circuits={mockCircuits}
+          outlets={nodes}
+          circuits={circuits}
           highlightedOutletIds={highlightedOutletIds}
           onSelectOutlet={handleSelectOutlet}
           onMoveOutlet={handleMoveOutlet}
@@ -102,7 +113,7 @@ function App() {
         <section className="info-bar">
           <div>Selected circuit: {selectedCircuitId ?? "None"}</div>
           <div>Selected outlet: {selectedOutletId ?? "None"}</div>
-          <div>GFCI links: {gfciProtects.size}</div>
+          <div>Node links: {nodeLinks.length}</div>
         </section>
       </main>
     </div>

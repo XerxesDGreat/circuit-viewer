@@ -8,7 +8,9 @@ export type OutletKind =
   | "APPLIANCE"
   | "COOKTOP"
   | "DRYER"
-  | "AC";
+  | "AC"
+  | "PANEL_FEED"
+  | "OTHER";
 
 export type Outlet = {
   id: string;
