@@ -12,4 +12,7 @@ apps/frontend/dist
 apps/backend/prisma/generated
 .env
 apps/backend/.env
+apps/backend/backups
+.env
+apps/backend/.env
 

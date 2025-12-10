@@ -22,3 +22,8 @@ Services:
 Env:
 - Backend expects `DATABASE_URL`; compose sets it to the Postgres service.
 - Sample env for local dev: `apps/backend/env.sample`.
+
+## Database snapshots
+From the repo root, with `DATABASE_URL` set (or `.env` in `apps/backend/`):
+- Dump: `npm run db:dump --workspace apps/backend` (writes to `apps/backend/backups/backup_<timestamp>.sql`)
+- Restore: `npm run db:restore --workspace apps/backend -- apps/backend/backups/backup_<timestamp>.sql`
