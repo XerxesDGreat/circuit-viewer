@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
-import type { Breaker, Circuit, Node, NodeLink } from "./types";
+import type { Breaker, BreakerLink, Circuit, Node, NodeLink } from "./types";
 
 export function useCircuits(enabled = true) {
   return useQuery<Circuit[]>({
@@ -34,6 +34,14 @@ export function useBreakers(enabled = true) {
   });
 }
 
+export function useBreakerLinks(enabled = true) {
+  return useQuery<BreakerLink[]>({
+    queryKey: ["breaker-links"],
+    queryFn: () => api.get<BreakerLink[]>("/api/breaker-links"),
+    enabled
+  });
+}
+
 export function useUpdateNodePosition() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -63,5 +71,35 @@ export function useCreateNodeLink() {
       queryClient.invalidateQueries({ queryKey: ["node-links"] });
     }
   });
+}
+
+export function useCreateBreaker() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<Breaker>) => api.post<Breaker>("/api/breakers", body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["breakers"] })
+  });
+}
+
+export function useUpdateBreaker() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { id: string; data: Partial<Breaker> }) =>
+      api.patch<Breaker>(`/api/breakers/${payload.id}`, payload.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["breakers"] })
+  });
+}
+
+export function useBreakerLinkMutations() {
+  const queryClient = useQueryClient();
+  const create = useMutation({
+    mutationFn: (body: Partial<BreakerLink>) => api.post<BreakerLink>("/api/breaker-links", body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["breaker-links"] })
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.del(`/api/breaker-links/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["breaker-links"] })
+  });
+  return { create, remove };
 }
 

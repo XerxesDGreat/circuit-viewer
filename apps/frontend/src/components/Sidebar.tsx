@@ -1,28 +1,30 @@
-import type { Circuit, Outlet } from "../types";
+import type { Outlet } from "../types";
+import type { Breaker } from "../api/types";
 
 type Props = {
-  circuits: Circuit[];
+  breakers: Breaker[];
   outlets: Outlet[];
-  selectedCircuitId: string | null;
+  selectedBreakerId: string | null;
   selectedOutletId: string | null;
-  onSelectCircuit: (id: string | null) => void;
+  onSelectBreaker: (id: string) => void;
   onSelectOutlet: (id: string) => void;
   onClear: () => void;
+  onEditBreakers: () => void;
 };
 
 export function Sidebar({
-  circuits,
+  breakers,
   outlets,
-  selectedCircuitId,
+  selectedBreakerId,
   selectedOutletId,
-  onSelectCircuit,
+  onSelectBreaker,
   onSelectOutlet,
-  onClear
+  onClear,
+  onEditBreakers
 }: Props) {
-  const outletsByCircuit = circuits.map((c) => ({
-    circuit: c,
-    outlets: outlets.filter((o) => o.circuitId === c.id)
-  }));
+  const breakerList = [...breakers].sort(
+    (a, b) => (a.slotNumber ?? Number.MAX_SAFE_INTEGER) - (b.slotNumber ?? Number.MAX_SAFE_INTEGER)
+  );
 
   const outletById = outlets.reduce<Record<string, Outlet>>((acc, o) => {
     acc[o.id] = o;
@@ -54,27 +56,29 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-header">
         <div>
-          <h2>Panels & Circuits</h2>
-          <p className="muted">Tap a circuit to highlight its outlets.</p>
+          <h2>Breakers</h2>
+          <p className="muted">Tap a breaker to highlight its nodes.</p>
         </div>
         <button className="ghost" onClick={onClear}>
           Clear
         </button>
       </div>
+      <div className="sidebar-actions">
+        <button className="ghost" onClick={onEditBreakers}>
+          Edit breakers
+        </button>
+      </div>
       <div className="circuit-list">
-        {outletsByCircuit.map(({ circuit, outlets }) => (
+        {breakerList.map((b, idx) => (
           <button
-            key={circuit.id}
-            className={`circuit-row ${selectedCircuitId === circuit.id ? "active" : ""}`}
-            onClick={() => onSelectCircuit(selectedCircuitId === circuit.id ? null : circuit.id)}
+            key={b.id ?? `breaker-${idx}`}
+            className={`circuit-row ${selectedBreakerId === b.id ? "active" : ""}`}
+            onClick={() => onSelectBreaker(b.id)}
           >
-            <div className="dot" style={{ background: circuit.color || "#0ea5e9" }} />
+            <div className="dot" style={{ background: "#0ea5e9" }} />
             <div className="circuit-info">
-              <div className="label">{circuit.label}</div>
-              <div className="muted">
-                {circuit.amperage ?? "?"}A / {circuit.voltage ?? "?"}V · {outlets.length} outlet
-                {outlets.length === 1 ? "" : "s"}
-              </div>
+              <div className="label">{b.label?.trim() || `Slot ${b.slotNumber ?? idx + 1}`}</div>
+              <div className="muted">{b.amperage ? `${b.amperage}A` : "Amperage ?"} </div>
             </div>
           </button>
         ))}

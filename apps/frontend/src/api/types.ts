@@ -60,6 +60,13 @@ export type Breaker = {
   circuitId?: string | null;
 };
 
+export type BreakerLink = {
+  id: string;
+  breakerAId: string;
+  breakerBId: string;
+  kind?: string | null;
+};
+
 export type ApiResult<T> = {
   data: T;
 };

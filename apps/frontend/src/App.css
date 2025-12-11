@@ -185,6 +185,142 @@
   gap: 8px;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.breaker-modal {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 16px;
+  color: #e5e7eb;
+  width: min(720px, 90vw);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.breaker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.breaker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.breaker-card {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  background: #111827;
+}
+
+.breaker-index {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #1f2937;
+  background: #0b1021;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.breaker-body {
+  flex: 1;
+}
+
+.breaker-row-display {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.breaker-row-display.edit {
+  align-items: flex-start;
+}
+
+.breaker-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.breaker-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: #e5e7eb;
+}
+
+.breaker-amp {
+  font-size: 13px;
+  text-align: left;
+}
+
+.breaker-name-input {
+  background: #0b1021;
+  color: #e5e7eb;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.breaker-amp-input {
+  background: #0b1021;
+  color: #e5e7eb;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 140px;
+}
+
+.breaker-tie select {
+  background: #0b1021;
+  color: #e5e7eb;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.breaker-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.breaker-actions.inline {
+  flex-direction: column;
+  justify-content: center;
+  margin-top: 0;
+  min-width: 80px;
+}
+
+.sidebar-actions {
+  margin: 8px 0 12px;
+}
+
 .legend {
   display: grid;
   gap: 6px;

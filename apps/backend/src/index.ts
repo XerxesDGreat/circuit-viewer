@@ -81,6 +81,21 @@ async function buildServer() {
     return reply.code(204).send();
   });
 
+  // Breaker links (ties)
+  app.get("/api/breaker-links", async () => {
+    return prisma.breakerLink.findMany();
+  });
+  app.post("/api/breaker-links", async (req, reply) => {
+    const body = req.body as any;
+    const link = await prisma.breakerLink.create({ data: body });
+    return reply.code(201).send(link);
+  });
+  app.delete("/api/breaker-links/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    await prisma.breakerLink.delete({ where: { id } });
+    return reply.code(204).send();
+  });
+
   // Nodes (formerly outlets)
   app.get("/api/nodes", async (req) => {
     const { circuitId, floorId, roomId, unassigned } = req.query as {
