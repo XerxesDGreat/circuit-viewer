@@ -5,13 +5,14 @@ import { FloorCanvas } from "./components/FloorCanvas";
 import { Sidebar } from "./components/Sidebar";
 import { useSelection } from "./state/useSelection";
 import type { Outlet } from "./types";
-import { useCircuits, useNodes, useNodeLinks } from "./api/hooks";
+import { useCircuits, useNodes, useNodeLinks, useUpdateNodePosition } from "./api/hooks";
 
 function App() {
   const [outlets, setOutlets] = useState<Outlet[]>(mockOutlets);
   const circuitsQuery = useCircuits();
   const nodesQuery = useNodes();
   const nodeLinksQuery = useNodeLinks();
+  const updateNodePosition = useUpdateNodePosition();
   const { selectedCircuitId, selectedOutletId, selectCircuit, selectOutlet, clear } = useSelection();
 
   const useLive = circuitsQuery.isSuccess && nodesQuery.isSuccess;
@@ -77,7 +78,11 @@ function App() {
   };
 
   const handleMoveOutlet = (id: string, x: number, y: number) => {
-    setOutlets((prev) => prev.map((o) => (o.id === id ? { ...o, x, y } : o)));
+    if (useLive) {
+      updateNodePosition.mutate({ id, x, y });
+    } else {
+      setOutlets((prev) => prev.map((o) => (o.id === id ? { ...o, x, y } : o)));
+    }
   };
 
   return (
