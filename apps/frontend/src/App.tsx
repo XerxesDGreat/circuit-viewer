@@ -15,10 +15,11 @@ function App() {
   const updateNodePosition = useUpdateNodePosition();
   const { selectedCircuitId, selectedOutletId, selectCircuit, selectOutlet, clear } = useSelection();
 
-  const useLive = circuitsQuery.isSuccess && nodesQuery.isSuccess;
-  const circuits = useLive ? (circuitsQuery.data as any) : mockCircuits;
-  const nodes = useLive ? (nodesQuery.data as any as Outlet[]) : outlets;
-  const nodeLinks = useLive ? nodeLinksQuery.data || [] : [];
+  const circuits = circuitsQuery.isSuccess ? (circuitsQuery.data as any) : mockCircuits;
+  const nodes = nodesQuery.isSuccess ? (nodesQuery.data as any as Outlet[]) : outlets;
+  const nodeLinks = nodeLinksQuery.isSuccess ? nodeLinksQuery.data || [] : [];
+  const usingLiveCircuits = circuitsQuery.isSuccess;
+  const usingLiveNodes = nodesQuery.isSuccess;
 
   const linkMaps = useMemo(() => {
     const protects = new Map<string, string[]>();
@@ -78,7 +79,7 @@ function App() {
   };
 
   const handleMoveOutlet = (id: string, x: number, y: number) => {
-    if (useLive) {
+    if (usingLiveNodes) {
       updateNodePosition.mutate({ id, x, y });
     } else {
       setOutlets((prev) => prev.map((o) => (o.id === id ? { ...o, x, y } : o)));
@@ -103,7 +104,9 @@ function App() {
             <p className="muted">Drag outlets, zoom with wheel/trackpad, click to highlight.</p>
           </div>
           <div className="badges">
-            <span className="badge">{useLive ? "Live data" : "Mock data"}</span>
+            <span className="badge">
+              {usingLiveCircuits && usingLiveNodes ? "Live data" : usingLiveCircuits ? "Live circuits" : "Mock data"}
+            </span>
             <span className="badge">Konva canvas</span>
           </div>
         </header>
