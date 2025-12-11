@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import type { Breaker, Circuit, Node, NodeLink } from "./types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function useCircuits(enabled = true) {
   return useQuery<Circuit[]>({
@@ -42,6 +41,26 @@ export function useUpdateNodePosition() {
       api.patch<Node>(`/api/nodes/${params.id}`, { x: params.x, y: params.y }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["nodes"] });
+    }
+  });
+}
+
+export function useCreateNode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<Node>) => api.post<Node>("/api/nodes", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["nodes"] });
+    }
+  });
+}
+
+export function useCreateNodeLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<NodeLink>) => api.post<NodeLink>("/api/node-links", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["node-links"] });
     }
   });
 }

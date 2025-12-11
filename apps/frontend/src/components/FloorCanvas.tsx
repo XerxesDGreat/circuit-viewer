@@ -11,6 +11,8 @@ type Props = {
   highlightedOutletIds: Set<string>;
   onSelectOutlet: (id: string) => void;
   onMoveOutlet?: (id: string, x: number, y: number) => void;
+  onCanvasClick?: (pos: { x: number; y: number; clientX: number; clientY: number }) => void;
+  draft?: { x: number; y: number; kind: Outlet["kind"]; circuitColor?: string };
 };
 
 const kindColor: Record<string, string> = {
@@ -32,7 +34,9 @@ export function FloorCanvas({
   circuits,
   highlightedOutletIds,
   onSelectOutlet,
-  onMoveOutlet
+  onMoveOutlet,
+  onCanvasClick,
+  draft
 }: Props) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -109,6 +113,18 @@ export function FloorCanvas({
         onTouchStart={handleStagePointerDown}
         onMouseUp={handleStagePointerUp}
         onTouchEnd={handleStagePointerUp}
+        onClick={(e) => {
+          const stage = e.target.getStage();
+          if (!stage) return;
+          const isStage = e.target === stage;
+          if (isStage && onCanvasClick) {
+            const rel = stage.getRelativePointerPosition();
+            const evt = e.evt as MouseEvent;
+            if (rel && evt) {
+              onCanvasClick({ x: rel.x, y: rel.y, clientX: evt.clientX, clientY: evt.clientY });
+            }
+          }
+        }}
         style={{ border: "1px solid #e2e8f0", background: "#fff" }}
       >
         <Layer>
@@ -132,7 +148,10 @@ export function FloorCanvas({
           )}
           {outlets.map((outlet) => {
             const isHighlighted = highlightedOutletIds.has(outlet.id);
-            const fill = circuitColors[outlet.circuitId || ""] || kindColor[outlet.kind] || "#0ea5e9";
+            const fill =
+              outlet.circuitId && circuitColors[outlet.circuitId]
+                ? circuitColors[outlet.circuitId]
+                : kindColor[outlet.kind] || "#9ca3af";
             return (
               <Group
                 key={outlet.id}
@@ -182,17 +201,40 @@ export function FloorCanvas({
               </Group>
             );
           })}
+          {draft && (
+            <Group x={draft.x} y={draft.y}>
+              {renderShape(draft.kind, draft.circuitColor || "#9ca3af", false, { dash: [4, 4], opacity: 0.7 })}
+              <Text
+                text="New node"
+                x={0}
+                y={-24}
+                offsetX={70}
+                width={140}
+                align="center"
+                fill="#0f172a"
+                fontSize={12}
+                wrap="none"
+              />
+            </Group>
+          )}
         </Layer>
       </Stage>
     </div>
   );
 }
 
-function renderShape(kind: OutletKind, fill: string, isHighlighted: boolean) {
+function renderShape(
+  kind: OutletKind,
+  fill: string,
+  isHighlighted: boolean,
+  extra?: { dash?: number[]; opacity?: number }
+) {
   const common = {
     stroke: isHighlighted ? "#f97316" : "#0f172a",
     strokeWidth: isHighlighted ? 3 : 1,
-    fill
+    fill,
+    ...(extra?.dash ? { dash: extra.dash } : {}),
+    ...(extra?.opacity ? { opacity: extra.opacity } : {})
   };
 
   switch (kind) {
