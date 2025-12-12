@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Stage, Layer, Rect, Group, Circle, Text, Line, Image as KonvaImage } from "react-konva";
 import useImage from "use-image";
 import type { KonvaEventObject } from "konva/lib/Node";
@@ -9,7 +9,7 @@ type Props = {
   outlets: Outlet[];
   circuits: Circuit[];
   highlightedOutletIds: Set<string>;
-  onSelectOutlet: (id: string) => void;
+  onSelectOutlet: (id: string, pos?: { clientX: number; clientY: number }) => void;
   onMoveOutlet?: (id: string, x: number, y: number) => void;
   onCanvasClick?: (pos: { x: number; y: number; clientX: number; clientY: number }) => void;
   draft?: { x: number; y: number; kind: Outlet["kind"]; circuitColor?: string };
@@ -39,9 +39,11 @@ export function FloorCanvas({
   draft
 }: Props) {
   const [scale, setScale] = useState(1);
+  const [baseScale, setBaseScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [stageDraggable, setStageDraggable] = useState(false);
   const [bgImage] = useImage(floor.backgroundImageUrl || "", "anonymous");
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const circuitColors = useMemo(
     () =>
@@ -58,12 +60,10 @@ export function FloorCanvas({
     const oldScale = scale;
     const pointer = e.target.getStage()?.getPointerPosition();
     if (!pointer) return;
-
     const mousePointTo = {
       x: (pointer.x - offset.x) / oldScale,
       y: (pointer.y - offset.y) / oldScale
     };
-
     const direction = e.evt.deltaY > 0 ? -1 : 1;
     const newScale = Math.min(Math.max(0.5, oldScale * (direction > 0 ? scaleBy : 1 / scaleBy)), 2);
     const newPos = {
@@ -92,11 +92,31 @@ export function FloorCanvas({
     setStageDraggable(false);
   };
 
+  useEffect(() => {
+    const computeScale = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const availableWidth = el.clientWidth;
+      const availableHeight = el.clientHeight || (el.clientWidth * floor.height) / floor.width;
+      if (availableWidth <= 0 || availableHeight <= 0) return;
+      const next = Math.min(availableWidth / floor.width, availableHeight / floor.height);
+      setBaseScale(next);
+      setOffset({ x: 0, y: 0 });
+    };
+    computeScale();
+    window.addEventListener("resize", computeScale);
+    return () => window.removeEventListener("resize", computeScale);
+  }, [floor.width, floor.height]);
+
   return (
-    <div className="canvas-container">
+    <div
+      className="canvas-container"
+      ref={containerRef}
+      style={{ aspectRatio: `${floor.width} / ${floor.height}` }}
+    >
       <Stage
-        width={floor.width}
-        height={floor.height}
+        width={floor.width * baseScale}
+        height={(floor.height || 1) * baseScale}
         scaleX={scale}
         scaleY={scale}
         x={offset.x}
@@ -158,8 +178,16 @@ export function FloorCanvas({
                 x={outlet.x}
                 y={outlet.y}
                 draggable
-                onDragEnd={(e) => onMoveOutlet?.(outlet.id, e.target.x(), e.target.y())}
-                onClick={() => onSelectOutlet(outlet.id)}
+                onDragEnd={(e) => {
+                  const factor = baseScale * scale;
+                  onMoveOutlet?.(outlet.id, e.target.x() / factor, e.target.y() / factor);
+                }}
+                onClick={(evt) =>
+                  onSelectOutlet(outlet.id, {
+                    clientX: (evt.evt as MouseEvent).clientX,
+                    clientY: (evt.evt as MouseEvent).clientY
+                  })
+                }
                 onTap={() => onSelectOutlet(outlet.id)}
               >
                 <Group>

@@ -12,6 +12,8 @@ import {
   useUpdateNodePosition,
   useCreateNode,
   useCreateNodeLink,
+  useUpdateNode,
+  useDeleteNodeLink,
   useBreakers,
   useBreakerLinks,
   useCreateBreaker,
@@ -44,7 +46,9 @@ function App() {
 
   const updateNodePosition = useUpdateNodePosition();
   const createNode = useCreateNode();
+  const updateNode = useUpdateNode();
   const createNodeLink = useCreateNodeLink();
+  const deleteNodeLink = useDeleteNodeLink();
   const [draft, setDraft] = useState<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftKind, setDraftKind] = useState<Outlet["kind"]>("OUTLET");
@@ -54,6 +58,8 @@ function App() {
   const [draftControl, setDraftControl] = useState<string | undefined>(undefined);
   const [localLinks, setLocalLinks] = useState<{ fromId: string; toId: string; kind: any }[]>([]);
   const [showBreakerModal, setShowBreakerModal] = useState(false);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const breakersQuery = useBreakers();
   const breakerLinksQuery = useBreakerLinks();
@@ -124,10 +130,43 @@ function App() {
     return set;
   }, [selectedCircuitId, selectedOutletId, nodes, linkMaps]);
 
-  const handleSelectOutlet = (id: string) => {
+  const handleSelectOutlet = (id: string, pos?: { clientX: number; clientY: number }) => {
     selectCircuit(null);
     setSelectedBreakerId(null);
     selectOutlet(id);
+
+    if (pos) {
+      const node = nodes.find((n) => n.id === id);
+      if (node) {
+        const gfciLink = (nodeLinks as any[]).find(
+          (l) => l.kind === "GFCI_PROTECTS" && l.toId === node.id
+        );
+        const controlLinkAsSwitch = (nodeLinks as any[]).find(
+          (l) => l.kind === "SWITCH_CONTROLS" && l.fromId === node.id
+        );
+        const controlLinkAsTarget = (nodeLinks as any[]).find(
+          (l) => l.kind === "SWITCH_CONTROLS" && l.toId === node.id
+        );
+
+        setEditingNodeId(node.id);
+        setDraft({
+          x: node.x,
+          y: node.y,
+          clientX: pos.clientX,
+          clientY: pos.clientY
+        });
+        setDraftName(node.name || "");
+        setDraftKind(node.kind as Outlet["kind"]);
+        setDraftCircuit(node.circuitId || undefined);
+        setDraftIsGfci(!!(node as any).isGfci);
+        setDraftGfciProtectedBy(gfciLink ? gfciLink.fromId : undefined);
+        if (node.kind === "SWITCH" || node.kind === "DIMMER") {
+          setDraftControl(controlLinkAsSwitch ? controlLinkAsSwitch.toId : undefined);
+        } else {
+          setDraftControl(controlLinkAsTarget ? controlLinkAsTarget.fromId : undefined);
+        }
+      }
+    }
   };
 
   const handleSelectBreaker = (breakerId: string) => {
@@ -197,6 +236,7 @@ function App() {
   };
 
   const handleCanvasClick = (pos: { x: number; y: number; clientX: number; clientY: number }) => {
+    setEditingNodeId(null);
     setDraft(pos);
     setDraftName("");
     setDraftKind("OUTLET");
@@ -206,7 +246,7 @@ function App() {
     setDraftControl(undefined);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!draft) return;
     const payload = {
       name: draftName || null,
@@ -217,60 +257,140 @@ function App() {
       floorId: useLive && nodes.length > 0 ? (nodes[0] as any).floorId : "floor-mock",
       isGfci: draftIsGfci
     };
+
     if (useLive) {
-      createNode.mutate(payload as any, {
-        onSuccess: async (created: any) => {
-          const linkPromises: Promise<any>[] = [];
-          if (draftGfciProtectedBy) {
+      const targetId = editingNodeId;
+      if (targetId) {
+        await updateNode.mutateAsync({ id: targetId, data: payload as any });
+        const toRemove = (nodeLinks as any[]).filter(
+          (l) =>
+            (l.kind === "GFCI_PROTECTS" && l.toId === targetId) ||
+            (l.kind === "SWITCH_CONTROLS" && (l.fromId === targetId || l.toId === targetId))
+        );
+        await Promise.allSettled(toRemove.map((l) => deleteNodeLink.mutateAsync(l.id)));
+
+        const linkPromises: Promise<any>[] = [];
+        if (draftGfciProtectedBy) {
+          linkPromises.push(
+            createNodeLink.mutateAsync({
+              kind: "GFCI_PROTECTS",
+              fromId: draftGfciProtectedBy,
+              toId: targetId
+            } as any)
+          );
+        }
+        if (draftControl) {
+          if (draftKind === "SWITCH" || draftKind === "DIMMER") {
             linkPromises.push(
               createNodeLink.mutateAsync({
-                kind: "GFCI_PROTECTS",
-                fromId: draftGfciProtectedBy,
-                toId: created.id
+                kind: "SWITCH_CONTROLS",
+                fromId: targetId,
+                toId: draftControl
+              } as any)
+            );
+          } else {
+            linkPromises.push(
+              createNodeLink.mutateAsync({
+                kind: "SWITCH_CONTROLS",
+                fromId: draftControl,
+                toId: targetId
               } as any)
             );
           }
-          if (draftControl) {
-            if (draftKind === "SWITCH" || draftKind === "DIMMER") {
-              linkPromises.push(
-                createNodeLink.mutateAsync({
-                  kind: "SWITCH_CONTROLS",
-                  fromId: created.id,
-                  toId: draftControl
-                } as any)
-              );
-            } else {
-              linkPromises.push(
-                createNodeLink.mutateAsync({
-                  kind: "SWITCH_CONTROLS",
-                  fromId: draftControl,
-                  toId: created.id
-                } as any)
-              );
+        }
+        await Promise.allSettled(linkPromises);
+      } else {
+        await new Promise<void>((resolve) => {
+          createNode.mutate(payload as any, {
+            onSuccess: async (created: any) => {
+              const linkPromises: Promise<any>[] = [];
+              if (draftGfciProtectedBy) {
+                linkPromises.push(
+                  createNodeLink.mutateAsync({
+                    kind: "GFCI_PROTECTS",
+                    fromId: draftGfciProtectedBy,
+                    toId: created.id
+                  } as any)
+                );
+              }
+              if (draftControl) {
+                if (draftKind === "SWITCH" || draftKind === "DIMMER") {
+                  linkPromises.push(
+                    createNodeLink.mutateAsync({
+                      kind: "SWITCH_CONTROLS",
+                      fromId: created.id,
+                      toId: draftControl
+                    } as any)
+                  );
+                } else {
+                  linkPromises.push(
+                    createNodeLink.mutateAsync({
+                      kind: "SWITCH_CONTROLS",
+                      fromId: draftControl,
+                      toId: created.id
+                    } as any)
+                  );
+                }
+              }
+              await Promise.allSettled(linkPromises);
+              resolve();
             }
-          }
-          await Promise.allSettled(linkPromises);
-          setDraft(null);
-        }
-      });
+          });
+        });
+      }
     } else {
-      const newId = `temp-${Date.now()}`;
-      setOutlets((prev) => [...prev, { id: newId, ...payload } as any]);
-      if (draftGfciProtectedBy) {
-        setLocalLinks((prev) => [...prev, { kind: "GFCI_PROTECTS", fromId: draftGfciProtectedBy, toId: newId }]);
-      }
-      if (draftControl) {
-        if (draftKind === "SWITCH" || draftKind === "DIMMER") {
-          setLocalLinks((prev) => [...prev, { kind: "SWITCH_CONTROLS", fromId: newId, toId: draftControl }]);
-        } else {
-          setLocalLinks((prev) => [...prev, { kind: "SWITCH_CONTROLS", fromId: draftControl, toId: newId }]);
+      if (editingNodeId) {
+        setOutlets((prev) =>
+          prev.map((o) => (o.id === editingNodeId ? ({ ...o, ...payload } as any) : o))
+        );
+        setLocalLinks((prev) =>
+          prev
+            .filter(
+              (l) =>
+                !(
+                  l.kind === "GFCI_PROTECTS" && l.toId === editingNodeId ||
+                  (l.kind === "SWITCH_CONTROLS" && (l.fromId === editingNodeId || l.toId === editingNodeId))
+                )
+            )
+            .concat(
+              draftGfciProtectedBy
+                ? [{ kind: "GFCI_PROTECTS", fromId: draftGfciProtectedBy, toId: editingNodeId }]
+                : []
+            )
+            .concat(
+              draftControl
+                ? draftKind === "SWITCH" || draftKind === "DIMMER"
+                  ? [{ kind: "SWITCH_CONTROLS", fromId: editingNodeId, toId: draftControl }]
+                  : [{ kind: "SWITCH_CONTROLS", fromId: draftControl, toId: editingNodeId }]
+                : []
+            )
+        );
+      } else {
+        const newId = `temp-${Date.now()}`;
+        setOutlets((prev) => [...prev, { id: newId, ...payload } as any]);
+        const newLinks: any[] = [];
+        if (draftGfciProtectedBy) {
+          newLinks.push({ kind: "GFCI_PROTECTS", fromId: draftGfciProtectedBy, toId: newId });
         }
+        if (draftControl) {
+          if (draftKind === "SWITCH" || draftKind === "DIMMER") {
+            newLinks.push({ kind: "SWITCH_CONTROLS", fromId: newId, toId: draftControl });
+          } else {
+            newLinks.push({ kind: "SWITCH_CONTROLS", fromId: draftControl, toId: newId });
+          }
+        }
+        setLocalLinks((prev) => [...prev, ...newLinks]);
       }
-      setDraft(null);
     }
+
+    setDraft(null);
+    setEditingNodeId(null);
   };
 
-  const handleCancelDraft = () => setDraft(null);
+  const handleCancelDraft = () => {
+    setDraft(null);
+    setEditingNodeId(null);
+  };
 
   const handleSaveBreakers = async (drafts: BreakerDraft[]) => {
     if (!useLive) {
@@ -326,22 +446,33 @@ function App() {
   };
 
   return (
-    <div className="page">
-      <Sidebar
-        breakers={breakers}
-        outlets={nodes}
-        selectedBreakerId={selectedBreakerId}
-        selectedOutletId={selectedOutletId}
-        onSelectBreaker={handleSelectBreaker}
-        onSelectOutlet={handleSelectOutlet}
-        onClear={handleClear}
-        onEditBreakers={() => setShowBreakerModal(true)}
-      />
+    <div className={`page ${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}>
+      <div className={`sidebar-container ${sidebarOpen ? "open" : "closed"}`}>
+        <Sidebar
+          breakers={breakers}
+          outlets={nodes}
+          selectedBreakerId={selectedBreakerId}
+          selectedOutletId={selectedOutletId}
+          onSelectBreaker={handleSelectBreaker}
+          onSelectOutlet={handleSelectOutlet}
+          onClear={handleClear}
+          onEditBreakers={() => setShowBreakerModal(true)}
+          onToggle={() => setSidebarOpen((s) => !s)}
+          isOpen={sidebarOpen}
+        />
+      </div>
       <main className="main">
         <header className="main-header">
-          <div>
-            <h1>Floor Plan</h1>
-            <p className="muted">Drag outlets, zoom with wheel/trackpad, click to highlight.</p>
+          <div className="header-left">
+            {!sidebarOpen && (
+              <button className="ghost" onClick={() => setSidebarOpen(true)}>
+                ☰
+              </button>
+            )}
+            <div>
+              <h1>Floor Plan</h1>
+              <p className="muted">Drag outlets, zoom with wheel/trackpad, click to highlight.</p>
+            </div>
           </div>
           <div className="badges">
             <span className="badge">{useLive ? "Live data" : "Mock data"}</span>
@@ -388,6 +519,7 @@ function App() {
             draft={draft}
             circuits={circuits}
             nodes={nodes}
+            mode={editingNodeId ? "edit" : "create"}
             draftName={draftName}
             draftKind={draftKind}
             draftCircuit={draftCircuit}
@@ -431,6 +563,7 @@ type DraftModalProps = {
   draftIsGfci: boolean;
   draftGfciProtectedBy?: string;
   draftControl?: string;
+  mode: "create" | "edit";
   onNameChange: (v: string) => void;
   onKindChange: (v: Outlet["kind"]) => void;
   onCircuitChange: (v: string | undefined) => void;
@@ -453,6 +586,7 @@ function DraftModal({
   draft,
   circuits,
   nodes,
+  mode,
   draftName,
   draftKind,
   draftCircuit,
@@ -494,7 +628,7 @@ function DraftModal({
   return (
     <div className="draft-modal" style={{ left, top, width }}>
       <div className="draft-header">
-        <strong>New node</strong>
+        <strong>{mode === "edit" ? "Edit node" : "New node"}</strong>
         <button className="ghost" onClick={onCancel}>
           Cancel
         </button>

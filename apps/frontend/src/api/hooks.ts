@@ -63,10 +63,31 @@ export function useCreateNode() {
   });
 }
 
+export function useUpdateNode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { id: string; data: Partial<Node> }) =>
+      api.patch<Node>(`/api/nodes/${payload.id}`, payload.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["nodes"] });
+    }
+  });
+}
+
 export function useCreateNodeLink() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: Partial<NodeLink>) => api.post<NodeLink>("/api/node-links", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["node-links"] });
+    }
+  });
+}
+
+export function useDeleteNodeLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.del(`/api/node-links/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["node-links"] });
     }

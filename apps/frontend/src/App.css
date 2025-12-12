@@ -1,7 +1,7 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0;
   text-align: center;
 }
 
@@ -10,6 +10,19 @@
   grid-template-columns: 320px 1fr;
   min-height: 100vh;
   background: #0b1021;
+}
+
+.page.sidebar-closed {
+  grid-template-columns: 0 1fr;
+}
+
+.sidebar-container {
+  transition: width 0.25s ease;
+  overflow: hidden;
+}
+
+.sidebar-container.closed {
+  width: 0;
 }
 
 .sidebar {
@@ -22,10 +35,15 @@
   gap: 16px;
 }
 
+.sidebar.closed {
+  display: none;
+}
+
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .circuit-list,
@@ -102,10 +120,11 @@
 .main {
   background: #0b1021;
   color: #e5e7eb;
-  padding: 24px;
+  padding: 16px 24px 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
 }
 
 .main-header {
@@ -113,6 +132,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .badges {
@@ -132,7 +157,9 @@
   border: 1px solid #1f2937;
   border-radius: 12px;
   background: #0b1021;
-  width: fit-content;
+  width: 100%;
+  height: auto;
+  min-height: 300px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }

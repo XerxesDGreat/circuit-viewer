@@ -10,6 +10,8 @@ type Props = {
   onSelectOutlet: (id: string) => void;
   onClear: () => void;
   onEditBreakers: () => void;
+  onToggle: () => void;
+  isOpen: boolean;
 };
 
 export function Sidebar({
@@ -20,7 +22,9 @@ export function Sidebar({
   onSelectBreaker,
   onSelectOutlet,
   onClear,
-  onEditBreakers
+  onEditBreakers,
+  onToggle,
+  isOpen
 }: Props) {
   const breakerList = [...breakers].sort(
     (a, b) => (a.slotNumber ?? Number.MAX_SAFE_INTEGER) - (b.slotNumber ?? Number.MAX_SAFE_INTEGER)
@@ -53,15 +57,20 @@ export function Sidebar({
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? "open" : "closed"}`}>
       <div className="sidebar-header">
         <div>
           <h2>Breakers</h2>
           <p className="muted">Tap a breaker to highlight its nodes.</p>
         </div>
-        <button className="ghost" onClick={onClear}>
-          Clear
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="ghost" onClick={onClear}>
+            Clear
+          </button>
+          <button className="ghost" onClick={onToggle} aria-label="Close sidebar">
+            ×
+          </button>
+        </div>
       </div>
       <div className="sidebar-actions">
         <button className="ghost" onClick={onEditBreakers}>
