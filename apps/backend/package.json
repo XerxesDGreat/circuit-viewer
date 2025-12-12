@@ -14,7 +14,8 @@
     "prisma:seed": "prisma db seed --schema prisma/schema.prisma",
     "db:reset": "prisma migrate reset --force --skip-generate --schema prisma/schema.prisma && prisma db seed --schema prisma/schema.prisma",
     "db:dump": "bash scripts/db-dump.sh",
-    "db:restore": "bash scripts/db-restore.sh"
+    "db:restore": "bash scripts/db-restore.sh",
+    "db:truncate": "bash scripts/db-truncate.sh"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
